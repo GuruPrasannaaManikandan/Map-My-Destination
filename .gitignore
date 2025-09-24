@@ -1,0 +1,22 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore dependencies
+package-lock.json
+yarn.lock
+
+# Ignore build artifacts
+/build/
+bin/
+*.o
+*.out
+*.exe
+
+# Ignore logs
+*.log
+
+# Ignore system/IDE files
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

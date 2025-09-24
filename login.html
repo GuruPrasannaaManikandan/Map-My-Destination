@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMD-Login</title>
+    <style>
+        /* Import Google Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+        /* General Styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Body */
+        body {
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Dark Mode */
+        body.dark-mode {
+            background-color: #181818;
+            color: #fff;
+        }
+
+        /* Dark Mode Toggle Button */
+        #dark-mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            border: none;
+            background: #c341f7;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        #dark-mode-toggle:hover {
+            background: #a920e0;
+        }
+
+        /* Login Container */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* Login Box */
+        .login-box {
+            background: white;
+            padding: 2rem;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            border-radius: 12px;
+            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* Dark Mode Box */
+        body.dark-mode .login-box {
+            background: #282828;
+            color: white;
+        }
+
+        /* Video/GIF Styling */
+        .gif {
+            margin-bottom: 1rem;
+            display: block;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .gif video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Headings */
+        h2 {
+            font-size: 20px;
+            margin-bottom: 1rem;
+        }
+
+        /* Input Groups */
+        .input-group {
+            text-align: left;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block; /* Ensures label takes its own line */
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px; /* Adds space between label and input */
+        }
+
+        /* Inputs */
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Dark Mode Inputs */
+        body.dark-mode .input-group input {
+            background: #333;
+            color: white;
+            border-color: #555;
+        }
+        
+        /* CORRECTED: Password Toggle Icon Position */
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 68%; /* Adjusted for better vertical alignment with the input field */
+            transform: translateY(-50%);
+            cursor: pointer;
+            user-select: none; /* Prevents text selection on double click */
+        }
+
+        /* Button */
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #c341f7;
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #a920e0;
+        }
+
+        /* Google Button */
+        .google-btn {
+            background-color: #4285F4;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .google-btn:hover {
+            background-color: #3367D6;
+        }
+
+        /* Links */
+        .links {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .links a {
+            color: #c341f7; /* Changed to match theme */
+            text-decoration: none;
+            margin: 0 5px;
+            transition: color 0.3s ease;
+        }
+
+        /* Dark Mode Links */
+        body.dark-mode .links a {
+            color: #af83f8;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 400px) {
+            .login-box {
+                padding: 1.5rem;
+            }
+            h2 {
+                font-size: 18px;
+            }
+            button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="dark-mode-toggle">🌙 Dark Mode</button>
+
+    <div class="login-container">
+        <div class="login-box">
+            
+            <div class="gif">
+                <video src="videos/Map_My_Destination_Intro_Animation.mp4" autoplay muted loop></video>
+            </div>
+            <h2>Sign in to Map My Destination</h2>
+
+            <form id="login-form">
+
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                    <span class="toggle-password">👁️</span>
+                </div>
+
+                <button type="submit">Sign In</button>
+            </form>
+
+            <button class="google-btn">🔵 Sign in with Google</button>
+
+            <div class="links">
+                <a href="#">Forgot password?</a>
+                <a href="#">Create account</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for the DOM to be fully loaded before running scripts
+        document.addEventListener("DOMContentLoaded", () => {
+            
+            // Dark Mode Toggle
+            const darkModeToggle = document.getElementById("dark-mode-toggle");
+            darkModeToggle.addEventListener("click", () => {
+                document.body.classList.toggle("dark-mode");
+                darkModeToggle.textContent = document.body.classList.contains("dark-mode") ? "☀️ Light Mode" : "🌙 Dark Mode";
+            });
+
+            // Toggle Password Visibility
+            const passwordInput = document.getElementById("password");
+            const togglePassword = document.querySelector(".toggle-password");
+
+            togglePassword.addEventListener("click", () => {
+                const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+                passwordInput.setAttribute("type", type);
+                togglePassword.textContent = type === "password" ? "👁️" : "🙈";
+            });
+
+            // --- IMPROVED: Login Form Submission ---
+            const loginForm = document.getElementById("login-form");
+
+            loginForm.addEventListener("submit", (event) => {
+                event.preventDefault(); // Prevents the form from submitting normally
+
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                // --- SECURITY WARNING ---
+                // The following check is happening on the client-side.
+                // This is INSECURE and should ONLY be used for demos.
+                // In a real application, you would send this data to a server for validation.
+                if (email === "prasannaavijayakumar2006@gmail.com" && password === "9942015200") {
+                    alert("Login successful!");
+                    // Ensure you have an 'index.html' file in the same directory for this redirect to work.
+                    window.location.href = "index.html";
+                } else {
+                    alert("Invalid email or password. Try again!");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

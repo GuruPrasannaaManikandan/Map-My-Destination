@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Map My Destination</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/lottie-web/build/player/lottie.min.js" defer></script>
+
+  <link rel="stylesheet" href="styles/body.css">
+  <script src="index.js"></script>
+</head><script>
+/* Minimal client integration — add exactly once near the end of index.html */
+/*IIFE Wraper :Immediately Invoked Function Expression*/
+(function(){
+  // helper to create DOM node for results
+  function createResultsBox() {
+    let box = document.getElementById('route-results-box');
+    if (box) return box;
+    box = document.createElement('div');
+    box.id = 'route-results-box';
+    document.body.appendChild(box);
+    return box;
+  }
+
+  // call backend to find routes
+  //Async function is used to call the backend ...
+  async function findRoutes(places, mode='bfs') {
+    try {
+      const res = await fetch('/findRoutes', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ places, mode, includeDfsAlternatives: true })
+      });
+      return await res.json();
+    } catch (e) {
+      console.error('findRoutes error', e);
+      return null;
+    }
+  }
+
+   //To get user inputs from the form: allow comma-separated intermediate stops
+
+  function getPlacesFromForm() {
+    const form = document.getElementById('searchForm');
+    if (!form) return null;
+    /*input to get from user the  start and final destination
+    */
+    const from = form.querySelector('input[aria-label="From city"]').value || '';
+    const to = form.querySelector('input[aria-label="To city"]').value || '';
+    /*Input to get from the user intermediate stops. */
+    const intermediatesRaw = form.querySelector('input[name="intermediate-stops"]').value || '';
+    const inters = intermediatesRaw.split(',').map(s => s.trim()).filter(Boolean);
+    /*An array is created for intermediate places and it is stored in the variable places..*/
+    const places = [from].concat(inters).concat([to]).filter(Boolean);
+    return places;
+  }
+
+  // show options box
+  /*This functions ensures the box is available */
+  function renderOptions(resp, selectedMode) {
+    const box = createResultsBox();
+    box.style.display = 'block'; // Ensure the box is visible
+    box.innerHTML = ''; // reset
+
+    if (!resp) {
+      box.innerText = 'Server error. See console.';
+      return;
+    }
+    if (!resp.success && resp.unreachableSegments && resp.unreachableSegments.length) {
+      const u = resp.unreachableSegments.map(s => `${s.from}→${s.to}`).join(', ');
+      box.innerHTML = `<strong>Unreachable segment(s):</strong><div style="margin-top:6px;color:#a00">${u}</div>`;
+      return;
+    }
+
+    const title = document.createElement('div');
+    title.style.fontWeight = '700';
+    title.style.marginBottom = '8px';
+    title.innerText = 'Route options';
+    box.appendChild(title);
+    
+    // Main combined route
+    const main = document.createElement('div');
+    main.style.marginBottom = '8px';
+    if (selectedMode === 'bfs') {
+        main.innerHTML = `
+            <strong>Primary (Shortest Path):</strong>
+            <div style="margin-top:6px;">${resp.combinedRoute.join(' → ')}</div>
+            <div style="margin-top:4px; font-size:14px;">Total Distance: ${resp.combinedDistance.toFixed(2)} km</div>
+        `;
+    } else {
+        main.innerHTML = `
+            <strong>Primary (DFS Path):</strong>
+            <div style="margin-top:6px;">${resp.combinedRoute.join(' → ')}</div>
+            <div style="margin-top:4px; font-size:14px;">Total Distance: ${resp.combinedDistance.toFixed(2)} km</div>
+        `;
+    }
+
+    const useBtn = document.createElement('button');
+    useBtn.innerText = 'Select this route';
+    useBtn.className = 'btn-primary';
+    useBtn.style.marginTop = '8px';
+    useBtn.onclick = () => {
+        sessionStorage.setItem('selectedRoute', JSON.stringify(resp.combinedRoute));
+        alert('Selected route saved. Opening simulation page...');
+        window.location.href = 'simulation.html';
+    };
+    main.appendChild(useBtn);
+    box.appendChild(main);
+
+    // DFS alternatives if present and BFS was selected
+    if (selectedMode === 'bfs' && resp.dfsAlternatives && resp.dfsAlternatives.length) {
+      const altTitle = document.createElement('div');
+      altTitle.style.fontWeight = '700';
+      altTitle.style.margin = '16px 0 6px';
+      altTitle.innerText = 'Alternative Routes';
+      box.appendChild(altTitle);
+
+      resp.dfsAlternatives.forEach((alt, idx) => {
+        const d = document.createElement('div');
+        d.className = 'alternative-route';
+        d.innerHTML = `
+            <div style="font-size:14px;"><strong>Option ${idx+1}:</strong></div>
+            <div style="font-size:13px; margin-top:4px;">${alt.combinedPath.join(' → ')}</div>
+            <div style="font-size:12px; color:var(--muted);">Distance: ${alt.combinedDistance.toFixed(2)} km</div>
+        `;
+        const btn = document.createElement('button');
+        btn.innerText = 'Select this option';
+        btn.className = 'btn-secondary';
+        btn.style.marginTop = '8px';
+        btn.onclick = () => {
+            sessionStorage.setItem('selectedRoute', JSON.stringify(alt.combinedPath));
+            alert('Selected alternative route saved. Opening simulation page...');
+            window.location.href = 'simulation.html';
+        };
+        d.appendChild(btn);
+        box.appendChild(d);
+      });
+    }
+
+    // Close button
+    const close = document.createElement('div');
+    close.style.textAlign = 'right';
+    const closeBtn = document.createElement('button');
+    closeBtn.innerText = 'Close';
+    closeBtn.className = 'btn-ghost';
+    closeBtn.onclick = () => box.style.display = 'none';
+    close.appendChild(closeBtn);
+    box.appendChild(close);
+  }
+
+  // Hook form submit to call backend
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('searchForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const places = getPlacesFromForm();
+      const selectedMode = form.querySelector('select[name="algorithm-mode"]').value;
+      if (!places || places.length < 2) {
+        alert('Enter from and to cities.');
+        return;
+      }
+      const resp = await findRoutes(places, selectedMode);
+      if (resp) {
+        renderOptions(resp, selectedMode);
+      } else {
+        alert('Server error. Check console.');
+      }
+    });
+  });
+})();
+</script>
+
+<body>
+  <div id="splash" role="dialog" aria-label="Intro animation">
+    <div class="splash-inner">
+      <div id="splash-lottie" aria-hidden="true"></div>
+      <div class="splash-brand">
+        <img alt="Map My Destination logo" src="assets/logo.svg" class="splash-logo" onerror="this.style.display='none'">
+        <h1>Map My Destination</h1>
+        <p class="muted">Plan. Explore. Enjoy.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="#">
+          <img src="assets/logo.svg" alt="Map My Destination" class="logo" onerror="this.style.display='none'">
+          <span class="brand-text">Map My Destination</span>
+        </a>
+
+        <nav class="nav">
+          <a href="#destinations">Destinations</a>
+          <a href="#packages">Packages</a>
+          <a href="#about">About</a>
+          <a href="#contact" class="btn-ghost">Contact</a>
+        </nav>
+
+        <button class="hamburger" aria-label="Open menu" aria-expanded="false" onclick="toggleMenu(this)">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-left">
+            <h2 class="hero-title">Discover routes. Create memories.</h2>
+            <p class="hero-sub">Plan your perfect road trips and temple visits — tailored routes using smart graph planning.</p>
+
+            <form class="search-card" id="searchForm">
+              <div class="row">
+                <label class="field">
+                  <span class="label-text">From</span>
+                  <input aria-label="From city" type="text" placeholder="e.g., Chennai" required>
+                </label>
+                <label class="field">
+                  <span class="label-text">To</span>
+                  <input aria-label="To city" type="text" placeholder="e.g., Kanyakumari" required>
+                </label>
+              </div>
+              <div class="row">
+                  <label class="field full-width">
+                      <span class="label-text">Intermediate Stops (optional)</span>
+                      <input aria-label="Intermediate stops" type="text" name="intermediate-stops" placeholder="e.g., Madurai, Trichy">
+                  </label>
+              </div>
+              <div class="row">
+                <label class="field small">
+                  <span class="label-text">Depart</span>
+                  <input aria-label="Departure date" type="date" required>
+                </label>
+                <label class="field small">
+                  <span class="label-text">Algorithm</span>
+                  <select aria-label="Algorithm mode" name="algorithm-mode">
+                    <option value="bfs">Shortest Route (BFS)</option>
+                    <option value="dfs">Alternative Routes (DFS)</option>
+                  </select>
+                </label>
+                <button class="btn-primary" type="submit">Find Route</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="hero-right" aria-hidden="true">
+            <div class="floating-illustration">
+              <svg viewBox="0 0 600 400" class="map-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+                <defs>
+                  <linearGradient id="g1" x1="0" x2="1">
+                    <stop offset="0" stop-color="#FF7A18"/><stop offset="1" stop-color="#FF3D6B"/>
+                  </linearGradient>
+                </defs>
+                <rect x="0" y="0" width="600" height="400" rx="12" fill="url(#g1)" opacity="0.06"></rect>
+                <path d="M60,340 C130,200 200,220 260,160 C320,100 380,120 460,90 C520,72 560,120 520,180 C480,240 420,260 360,300 C300,340 200,360 120,330 Z"
+                      fill="#fff" opacity="0.2"></path>
+                <circle cx="200" cy="220" r="6" fill="#fff"></circle>
+                <circle cx="360" cy="300" r="6" fill="#fff"></circle>
+                <circle cx="460" cy="120" r="6" fill="#fff"></circle>
+                <path d="M200 220 Q260 240 360 300" stroke="#fff" stroke-width="2" stroke-dasharray="6 8" fill="none" opacity="0.9"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+<section id="destinations" class="section">
+  <div class="container">
+    <h3 class="section-title">Popular Destinations</h3>
+    <p class="muted">Hand-picked journeys and must-see spots across India.</p>
+
+    <div class="cards-grid">
+      <article class="card">
+        <div class="card-media">
+          <video src="videos/Couple_Visits_Brihadeshwara_Temple_Video.mp4" autoplay muted loop ></video>
+
+        </div>
+        <div class="card-body">
+          <h4>Brihadeeswara Temple</h4>
+          <p class="muted">Thanjavur's iconic monument — deep history, grand architecture.</p>
+          <div class="card-meta">
+            <span>2 nights</span>
+            <span class="price">From ₹2,499</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-media">
+          
+          <video src="videos/Couple_Enjoys_Ooty_Hill_Station_Video.mp4" autoplay muted loop ></video>
+
+
+        </div>
+        <div class="card-body">
+          <h4>Ooty Hill-Station</h4>
+          <p class="muted">Cool breezes and tea gardens — ideal for family trips.</p>
+          <div class="card-meta">
+            <span>3 nights</span>
+            <span class="price">From ₹4,199</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-media">
+          <video src="videos/Chennai_Beach_Friends_Video_Generation.mp4" autoplay muted loop ></video>
+
+        </div>
+        <div class="card-body">
+          <h4>Chennai Coastal Drive</h4>
+          <p class="muted">City vibe with seaside calm — short & sweet escape.</p>
+          <div class="card-meta">
+            <span>1 night</span>
+            <span class="price">From ₹999</span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+      <section id="packages" class="section alt">
+        <div class="container">
+          <h3 class="section-title">Why Choose Us</h3>
+          <div class="features-grid">
+            <div class="feature">
+              <div class="feature-icon">🚗</div>
+              <h4>Custom Routes</h4>
+              <p class="muted">Smart graph planning finds shortest and scenic routes.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🏨</div>
+              <h4>Verified Stays</h4>
+              <p class="muted">Only trusted hotels & homestays.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">💬</div>
+              <h4>Support</h4>
+              <p class="muted">24/7 travel support when you need it.</p>
+            </div>
+          </div>
+
+          <div class="cta-row">
+            <p class="muted">Ready to plan your trip?</p>
+            <a class="btn-primary large" href="#searchForm">Start Planning</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <strong>Map My Destination</strong>
+          <p class="muted">© <span id="year"></span> — All rights reserved</p>
+        </div>
+        <div class="footer-links">
+          <a href="#">Terms</a><a href="#">Privacy</a><a href="#">Contact</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // show current year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Lottie load + splash hide logic
+    (function () {
+      const splash = document.getElementById('splash');
+      const app = document.getElementById('app');
+
+      // Try loading Lottie file if available; otherwise keep a fallback
+      let lottieAnim;
+      try {
+        if (window.lottie) {
+          lottieAnim = lottie.loadAnimation({
+            container: document.getElementById('splash-lottie'),
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            path: 'assets/intro.json' // <-- Replace with your Lottie JSON or change to video fallback
+          });
+        }
+      } catch (e) {
+        console.warn('Lottie failed to load', e);
+      }
+
+      // fallback: if you prefer video, place <video> inside #splash and comment out Lottie code
+      function reveal() {
+        splash.classList.add('fade-out');
+        setTimeout(() => {
+          splash.style.display = 'none';
+          app.hidden = false;
+          // stop lottie to save CPU
+          try { lottieAnim && lottieAnim.destroy(); } catch (e) {}
+        }, 700);
+      }
+
+      // Force hide after 5s (guaranteed)
+      setTimeout(reveal, 5000);
+
+      // On reduced-motion users, skip animations and show app immediately
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) {
+        reveal();
+      }
+    })();
+
+    // small menu toggle for mobile
+    function toggleMenu(btn) {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      document.querySelector('.nav').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

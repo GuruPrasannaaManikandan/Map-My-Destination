@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Simulation</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        #map {
+            height: 100%;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .controls button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #ff6b24;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="controls">
+        <button onclick="startSimulation()">Start Simulation</button>
+    </div>
+    
+    <script>
+        let map;
+        let routeCoordinates;
+        let locatorMarker;
+        let polylinePath;
+        let currentCityIndex = 0;
+        let animationTimeout;
+
+        // Coordinates of major cities in Tamil Nadu (real-world lat/lng)
+        const cityCoords = {
+            "chennai": { lat: 13.0827, lng: 80.2707 },
+            "vellore": { lat: 12.9165, lng: 79.1325 },
+            "ooty": { lat: 11.4064, lng: 76.6932 },
+            "coimbatore": { lat: 11.0168, lng: 76.9558 },
+            "salem": { lat: 11.6643, lng: 78.1470 },
+            "erode": { lat: 11.3411, lng: 77.7282 },
+            "trichy": { lat: 10.7905, lng: 78.7047 },
+            "madurai": { lat: 9.9252, lng: 78.1198 },
+            "kanyakumari": { lat: 8.0883, lng: 77.5385 },
+            "pondicherry": { lat: 11.9416, lng: 79.8083 },
+            "cuddalore": { lat: 11.7437, lng: 79.7766 },
+            "thanjavur": { lat: 10.7870, lng: 79.1378 }
+        };
+
+        function initMap() {
+            const selectedRoute = JSON.parse(sessionStorage.getItem('selectedRoute'));
+            if (!selectedRoute || selectedRoute.length < 2) {
+                alert('No route selected. Please go back and select a route.');
+                return;
+            }
+
+            routeCoordinates = selectedRoute.map(city => cityCoords[city.toLowerCase()]).filter(Boolean);
+
+            if (routeCoordinates.length < 2) {
+                alert('Invalid route. Please select a valid route with known cities.');
+                return;
+            }
+
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: routeCoordinates[0],
+                zoom: 8,
+                heading: 0,
+                tilt: 45,
+                mapId: '2406d184366ec6afac60e17a',
+            });
+
+            polylinePath = new google.maps.Polyline({
+                path: routeCoordinates,
+                geodesic: true,
+                strokeColor: '#ff6b24',
+                strokeOpacity: 1.0,
+                strokeWeight: 5,
+            });
+            polylinePath.setMap(map);
+
+            locatorMarker = new google.maps.Marker({
+                position: routeCoordinates[0],
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: '#0000FF',
+                    fillOpacity: 1.0,
+                    strokeWeight: 0,
+                },
+            });
+
+            const bounds = new google.maps.LatLngBounds();
+            routeCoordinates.forEach(coord => bounds.extend(coord));
+            map.fitBounds(bounds);
+        }
+
+        function animateToNextCity() {
+            if (currentCityIndex >= routeCoordinates.length - 1) {
+                // End of the route
+                alert('Simulation complete!');
+                return;
+            }
+
+            const startCoord = routeCoordinates[currentCityIndex];
+            const endCoord = routeCoordinates[currentCityIndex + 1];
+
+            // A smooth linear animation.
+            let step = 0;
+            const totalSteps = 200; // More steps for a smoother animation
+            const animate = () => {
+                if (step > totalSteps) {
+                    currentCityIndex++;
+                    animationTimeout = setTimeout(animateToNextCity, 1000); // 5-second delay
+                    return;
+                }
+
+                const newLat = startCoord.lat + (endCoord.lat - startCoord.lat) * (step / totalSteps);
+                const newLng = startCoord.lng + (endCoord.lng - startCoord.lng) * (step / totalSteps);
+                const newPosition = { lat: newLat, lng: newLng };
+
+                locatorMarker.setPosition(newPosition);
+                map.setCenter(newPosition);
+                step++;
+                requestAnimationFrame(animate);
+            };
+
+            animate();
+        }
+
+        function startSimulation() {
+            if (animationTimeout) clearTimeout(animationTimeout); // Stop any existing animation
+            currentCityIndex = 0; // Reset
+            animateToNextCity();
+        }
+    </script>
+    
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBk3rCAG9PxRdHkIle6wR_m-dRslrJrah8&map_ids=2406d184366ec6afac60e17a&libraries=maps&callback=initMap">
+    </script>
+</body>
+</html>
